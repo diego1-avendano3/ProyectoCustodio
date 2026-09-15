@@ -1,0 +1,38 @@
+version: "3.9"
+
+# Levanta el subconjunto de Fase 1: Custodia PDP (OPA) + finance-api-mock +
+# custodia-pep. Uso: docker compose up --build
+#
+# Prueba rápida una vez arriba:
+#   curl -H "X-Employee-Id: emp-42" -H "X-Role: employee" -H "X-Risk-Score: 10" \
+#        http://localhost:8080/accounts/acc-1001/balance
+#
+services:
+  custodia-pdp:
+    image: openpolicyagent/opa:latest
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    volumes:
+      - ./policies:/policies:ro
+    ports:
+      - "8181:8181"
+
+  finance-api-mock:
+    build:
+      context: .
+      dockerfile: finance-api-mock/Dockerfile
+    ports:
+      - "8081:8081"
+
+  custodia-pep:
+    build:
+      context: .
+      dockerfile: custodia-pep/Dockerfile
+    environment:
+      # Spring relaxed binding: custodia.opa.base-url -> CUSTODIA_OPA_BASE_URL
+      CUSTODIA_OPA_BASE_URL: http://custodia-pdp:8181
+      CUSTODIA_FINANCE_API_BASE_URL: http://finance-api-mock:8081
+    ports:
+      - "8080:8080"
+    depends_on:
+      - custodia-pdp
+      - finance-api-mock

@@ -1,0 +1,10 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: finance-api-mock
+
+logging:
+  level:
+    com.custodia: INFO

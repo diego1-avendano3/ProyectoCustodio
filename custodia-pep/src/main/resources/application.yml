@@ -1,0 +1,19 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: custodia-pep
+
+custodia:
+  opa:
+    base-url: http://localhost:8181
+    policy-path: /v1/data/officesec/authz
+    timeout-ms: 300
+  finance-api:
+    base-url: http://localhost:8081
+
+logging:
+  level:
+    com.custodia: INFO
+    CUSTODIA_AUDIT: INFO

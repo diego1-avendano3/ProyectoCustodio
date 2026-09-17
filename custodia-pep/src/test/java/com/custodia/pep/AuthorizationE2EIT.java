@@ -135,4 +135,27 @@ class AuthorizationE2EIT {
                 .expectBody()
                 .jsonPath("$.accountNumber").isEqualTo(MASKED_ACCOUNT_NUMBER);
     }
+
+    @Test
+    void ownerWithExtremeRisk_isDenied() {
+        // AUTH-006: risk_score >= 90 no tiene regla de permiso en authz.rego;
+        // cae en el default deny incluso para el propio dueño de la cuenta.
+        client.get().uri("/accounts/" + ACCOUNT_ID + "/balance")
+                .header("X-Employee-Id", OWNER_ID)
+                .header("X-Role", "employee")
+                .header("X-Risk-Score", "90")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void missingRiskScoreHeader_isDenied() {
+        // SEC-003: si falta un header obligatorio, el PEP debe denegar
+        // (fail-closed), nunca fallar con un 5xx ni conceder acceso.
+        client.get().uri("/accounts/" + ACCOUNT_ID + "/balance")
+                .header("X-Employee-Id", OWNER_ID)
+                .header("X-Role", "employee")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

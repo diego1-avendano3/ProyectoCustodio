@@ -27,6 +27,10 @@
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>3.3.5</spring-boot.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
+    <wiremock.version>3.9.2</wiremock.version>
+    <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
+    <maven-failsafe-plugin.version>3.5.2</maven-failsafe-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -35,6 +39,15 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
         <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- BOM de Testcontainers: fija juntas las versiones de todos sus
+           módulos (core, junit-jupiter, etc.) para que no diverjan. -->
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -52,6 +65,33 @@
                   <execution>
                       <goals>
                           <goal>repackage</goal>
+                      </goals>
+                  </execution>
+              </executions>
+          </plugin>
+          <!-- Sin spring-boot-starter-parent no hay versión de surefire/failsafe
+               pinneada por defecto (misma causa raíz que los bugs de Fase 1) -->
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire-plugin.version}</version>
+              <configuration>
+                  <!-- Los *IT.java (Testcontainers, más lentos) NO corren en
+                       `mvn test`; solo en `mvn verify`, vía failsafe abajo. -->
+                  <excludes>
+                      <exclude>**/*IT.java</exclude>
+                  </excludes>
+              </configuration>
+          </plugin>
+          <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-failsafe-plugin</artifactId>
+              <version>${maven-failsafe-plugin.version}</version>
+              <executions>
+                  <execution>
+                      <goals>
+                          <goal>integration-test</goal>
+                          <goal>verify</goal>
                       </goals>
                   </execution>
               </executions>

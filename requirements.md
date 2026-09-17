@@ -113,22 +113,26 @@ no calza con ninguna regla de permiso).
 
 ## 6. Items abiertos (requieren decisión antes de continuar)
 
-**AUTH-006 — Umbral superior de `risk_score` (PENDIENTE DE DECISIÓN)**
+**AUTH-006 — Umbral superior de `risk_score` (DECIDIDO — 2026-09-17)**
 
-Las reglas AUTH-001 y AUTH-003 cubren `risk_score` de 0 a 89. No existe hoy
-una regla explícita para `risk_score >= 90`, ni en la política Rego ni en la
-matriz de pruebas original (Fase 1 manual). En la práctica, esto cae en el
-deny-by-default de SEC-002 y hoy se traduce en **acceso denegado incluso
-para el propio owner**. Antes de la Fase 2 hay que decidir explícitamente
-si ese es el comportamiento deseado, o si `risk_score >= 90` debería:
-  - (a) mantenerse como denegación total (comportamiento actual, implícito),
-  - (b) requerir un paso adicional de verificación (p. ej. MFA) en vez de
-    denegar de plano, o
-  - (c) alguna otra política.
+When un empleado solicita el saldo de una cuenta de la cual es owner y su
+`risk_score` es 90 o mayor, el PEP shall denegar el acceso por completo con
+status 403, incluso siendo el dueño de la cuenta.
 
-Una vez decidido, se debe: redactar el requisito formal aquí (reemplazando
-esta nota), agregar la regla correspondiente en `policies/authz.rego` si
-hace falta, y agregar un sexto escenario a `AuthorizationE2EIT`.
+> **Decisión:** se mantiene la denegación total (opción recomendada), en
+> línea con un enfoque fail-closed estricto: a partir de riesgo extremo, ni
+> siquiera el dueño puede consultar su propio saldo. No se introduce MFA ni
+> ninguna vía alterna de acceso en esta fase.
+>
+> **Estado de implementación:** la política actual (`policies/authz.rego`)
+> ya produce este resultado de forma *implícita*, vía el deny-by-default de
+> SEC-002 (nunca hubo una regla de permiso para `risk_score >= 90`). Como el
+> comportamiento ahora es una decisión explícita y no un vacío accidental,
+> queda pendiente como tarea de higiene: (1) agregar un comentario explícito
+> en `policies/authz.rego` dejando constancia de que ese rango se deniega a
+> propósito y no por omisión, y (2) agregar un sexto escenario a
+> `AuthorizationE2EIT` (p. ej. `ownerWithExtremeRisk_isDenied`) que lo
+> verifique, ya que hoy pasa "por accidente" y no por una prueba dedicada.
 
 **SEC-001 / SEC-003 — Cobertura de pruebas fail-closed (PENDIENTE)**
 
@@ -155,7 +159,7 @@ prueba y verifique 403, y otro que omita un header obligatorio y verifique
 | AUTH-003 | Owner, riesgo 70–89 → enmascarado | Regla de auto-vista riesgo alto | `ownerWithHighRisk_getsBalanceWithMaskedAccountNumber` | Implementado y probado |
 | AUTH-004 | Fraud analyst sin caso → denegado | Deny-by-default | `fraudAnalystWithoutOpenCase_isDenied` | Implementado y probado |
 | AUTH-005 | Fraud analyst con caso → enmascarado | Regla de analista de fraude | `fraudAnalystWithOpenCase_getsBalanceWithMaskedAccountNumber` | Implementado y probado |
-| AUTH-006 | `risk_score >= 90` | — | — | **Pendiente de decisión** |
+| AUTH-006 | Owner, riesgo ≥90 → denegado por completo | Deny-by-default (implícito; falta comentario explícito) | — | Decidido; **falta test dedicado** |
 | DATA-001 | Formato de enmascarado | Regla de auto-vista riesgo alto / analista | Verificado indirectamente (AUTH-003, AUTH-005) | Implementado y probado |
 
 ---

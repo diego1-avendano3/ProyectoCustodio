@@ -47,7 +47,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
  * sin cambios adicionales.
  */
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = CustodiaPepApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient(timeout = "PT10S")
 class AuthorizationE2EIT {
 

@@ -38,16 +38,16 @@ public class DevHeaderSubjectResolver {
 		return value;
 	}
 
-	private int parseRiskScore(String raw) {
-		if (raw == null || raw.isBlank()) {
-			return 0;
-		}
-		try {
-			return Integer.parseInt(raw.trim());
-		} catch (NumberFormatException ex) {
-			throw new MissingSubjectHeaderException(HEADER_RISK_SCORE + " debe ser numérico");
-		}
-	}
+    private int parseRiskScore(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new MissingSubjectHeaderException(HEADER_RISK_SCORE);
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException ex) {
+            throw new MissingSubjectHeaderException(HEADER_RISK_SCORE + " debe ser numérico");
+        }
+    }
 
 	public static class MissingSubjectHeaderException extends RuntimeException {
 		public MissingSubjectHeaderException(String message) {

@@ -68,8 +68,10 @@
       <!-- Activa el binding de pluginManagement: corre los *IT.java en la
            fase integration-test/verify (mvn verify), no en mvn test. -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+        </configuration>
       </plugin>
     </plugins>
   </build>

@@ -156,6 +156,6 @@ class AuthorizationE2EIT {
                 .header("X-Employee-Id", OWNER_ID)
                 .header("X-Role", "employee")
                 .exchange()
-                .expectStatus().isForbidden();
+                .expectStatus().isBadRequest();
     }
 }

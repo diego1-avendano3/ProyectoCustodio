@@ -24,6 +24,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 
+import org.springframework.boot.test.context.SpringBootTestContextBootstrapper;
+import org.springframework.test.context.BootstrapWith;
+
 /**
  * Reemplaza la matriz de 5 escenarios que se validó a mano con curl durante
  * el cierre de Fase 1 (ver docs/reports/fase1-resumen.pdf) por pruebas
@@ -49,6 +52,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 @Testcontainers
 @SpringBootTest(classes = CustodiaPepApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient(timeout = "PT10S")
+@BootstrapWith(SpringBootTestContextBootstrapper.class)
 class AuthorizationE2EIT {
 
 	private static final String ACCOUNT_ID = "acc-1001";

@@ -18,7 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+
 
 import java.util.Map;
 
@@ -54,18 +57,19 @@ public class AccountProxyController {
 		this.auditLogger = auditLogger;
 	}
 
-	@GetMapping("/{id}/balance")
-	public Mono<ResponseEntity<Object>> getBalance(
-			@PathVariable String id,
-			HttpHeaders headers,
-			@RequestParam(name = "caseOpen", required = false, defaultValue = "false") boolean caseOpen
-	) {
-		Subject subject;
-		try {
-			subject = subjectResolver.resolve(headers);
-		} catch (MissingSubjectHeaderException ex) {
-			return Mono.just(ResponseEntity.badRequest().body(Map.of("error", ex.getMessage())));
-		}
+    @GetMapping("/{id}/balance")
+    public Mono<ResponseEntity<Object>> getBalance(
+            @PathVariable("id") String id,
+            ServerWebExchange exchange,
+            @RequestParam(name = "caseOpen", required = false, defaultValue = "false") boolean caseOpen
+    ) {
+        HttpHeaders headers = exchange.getRequest().getHeaders();
+        Subject subject;
+        try {
+            subject = subjectResolver.resolve(headers);
+        } catch (MissingSubjectHeaderException ex) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("error", ex.getMessage())));
+        }
 
 		// Se consulta el recurso antes de decidir porque el dueño (necesario
 		// para la política) vive en el propio recurso; el dato nunca sale de

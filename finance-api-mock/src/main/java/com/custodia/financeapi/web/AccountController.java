@@ -22,7 +22,7 @@ public class AccountController {
 	}
 
 	@GetMapping("/accounts/{id}/balance")
-	public ResponseEntity<Account> getBalance(@PathVariable String id) {
+	public ResponseEntity<Account> getBalance(@PathVariable("id") String id) {
 		return accounts.findById(id)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());

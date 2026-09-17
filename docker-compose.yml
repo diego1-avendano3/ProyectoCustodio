@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: finance-api-mock/Dockerfile
     ports:
-      - "8081:8081"
+      - "18081:8081"
 
   custodia-pep:
     build:

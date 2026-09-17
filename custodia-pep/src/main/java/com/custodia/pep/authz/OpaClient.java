@@ -47,7 +47,7 @@ public class OpaClient {
 				.bodyToMono(OpaResponse.class)
 				.timeout(timeout)
 				.map(OpaResponse::result)
-				.doOnNext(decision -> log.debug("Decisión del PDP para {}: allow={}", input, decision.allow()))
+                .doOnNext(decision -> log.debug("Decisión del PDP para {}: allow={}", input, decision.allow()))
 				.onErrorResume(ex -> {
 					log.warn("PDP no disponible u operación fuera de tiempo; aplicando fail-closed (ADR-0001). Causa: {}",
 							ex.toString());

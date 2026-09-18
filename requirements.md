@@ -7,9 +7,10 @@ definición, ver sección 9.
 **Estado Fase 0-1:** cerrada — todos los requisitos están implementados y
 verificados por al menos un test automatizado en CI (última verificación:
 2026-09-17, PRs #2, #3 y #4).
-**Estado Fase 2:** requisitos recién definidos (2026-09-17), a partir de
-RF2 y la sección de arquitectura de la especificación maestra
-(https://claude.ai/artifact/6nk6MMYdN4rnc4XM9PQQH5). Aún sin implementar.
+**Estado Fase 2:** requisitos y decisiones de diseño definidos
+(2026-09-17/18), a partir de RF2 y la sección de arquitectura de la
+especificación maestra (https://claude.ai/artifact/6nk6MMYdN4rnc4XM9PQQH5).
+Sin ítems abiertos que bloqueen el inicio de la implementación.
 **Convención de ID:** `<AREA>-<NNN>`. Áreas usadas aquí: `AUTH` (decisión
 de autorización), `SEC` (seguridad/fail-safe), `DATA` (formato de datos
 expuestos), `GW` (Sensitive Data Gateway, Fase 2).
@@ -264,25 +265,27 @@ sin descifrar ni un valor por defecto) — mismo principio fail-closed de
 ADR-0001, aplicado ahora a la capa de datos en vez de a la capa de
 autorización.
 
-### 9.4 Pendiente de definir antes de implementar
+### 9.4 Decisiones de diseño adicionales (confirmadas 2026-09-18)
 
-Estas son decisiones de diseño más finas que todavía no están resueltas y
-que conviene fijar (con su propio mini-ADR, según RF5) antes de escribir
-código:
+**GW-006** — El Sensitive Data Gateway shall implementarse como un módulo
+Maven nuevo (`sensitive-data-gateway`) embebido en el mismo proceso de
+`finance-api-mock`, no como un servicio HTTP independiente.
+> **Decisión:** se prioriza simplicidad sobre fidelidad literal al diagrama
+> de la especificación (que lo dibuja como caja propia) — evita sumar otro
+> salto de red, otro servicio que desplegar y otro punto de falla al
+> laboratorio. La separación lógica (módulo Maven propio, con su propio
+> paquete y responsabilidad de único punto de acceso a los campos
+> sensibles) sigue siendo real y demostrable en la entrevista aunque no
+> corra como proceso aparte; si más adelante se quiere mostrar el
+> componente desacoplado como servicio independiente, es una extracción de
+> ese módulo a su propio Spring Boot app, no un rediseño.
 
-- **Forma del componente:** ¿el Sensitive Data Gateway es un módulo Maven
-  nuevo dentro del reactor (`sensitive-data-gateway`), una librería
-  compartida que `finance-api-mock` importa, o un servicio HTTP
-  independiente? La especificación lo dibuja como un componente propio en
-  el diagrama de arquitectura; por defecto se asume **módulo Maven nuevo**
-  embebido en el proceso de `finance-api-mock` (evita otro salto de red y
-  otro punto de falla en el laboratorio), pero es una decisión a
-  confirmar.
-- **Rotación de llaves KMS:** para este laboratorio se asume la rotación
-  automática anual por defecto de KMS, sin lógica adicional propia — no es
-  un requisito de Fase 2, se anota aquí para no perderlo de vista si surge
-  en la entrevista.
+Puntos menores que quedan anotados pero no bloquean el inicio de la
+implementación:
+
+- **Rotación de llaves KMS:** se asume la rotación automática anual por
+  defecto de KMS, sin lógica adicional propia.
 - **Migración de datos existentes:** Fase 1 no tenía base de datos
   (`finance-api-mock` servía datos en memoria/hardcodeados), así que no
-  hay datos previos que migrar a PostgreSQL — el seed inicial se define de
-  cero en Fase 2.
+  hay datos previos que migrar — el seed inicial de PostgreSQL se define
+  de cero en Fase 2.

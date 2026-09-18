@@ -1,11 +1,18 @@
 # Requisitos — Proyecto Custodia
 
 **Formato:** EARS (Easy Approach to Requirements Syntax)
-**Alcance cubierto:** Fase 0 (núcleo de autorización) y Fase 1 (validación E2E)
-**Estado:** Fase 0-1 cerrada — todos los requisitos de este documento están
-implementados y verificados por al menos un test automatizado en CI
-(última verificación: 2026-09-17, PRs #2, #3 y #4).
-**Convención de ID:** `<AREA>-<NNN>`. Áreas usadas aquí: `AUTH` (decisión de autorización), `SEC` (seguridad/fail-safe), `DATA` (formato de datos expuestos).
+**Alcance cubierto:** Fase 0 (núcleo de autorización), Fase 1 (validación
+E2E) — cerradas — y Fase 2 (Sensitive Data Gateway + AWS KMS) — en
+definición, ver sección 9.
+**Estado Fase 0-1:** cerrada — todos los requisitos están implementados y
+verificados por al menos un test automatizado en CI (última verificación:
+2026-09-17, PRs #2, #3 y #4).
+**Estado Fase 2:** requisitos recién definidos (2026-09-17), a partir de
+RF2 y la sección de arquitectura de la especificación maestra
+(https://claude.ai/artifact/6nk6MMYdN4rnc4XM9PQQH5). Aún sin implementar.
+**Convención de ID:** `<AREA>-<NNN>`. Áreas usadas aquí: `AUTH` (decisión
+de autorización), `SEC` (seguridad/fail-safe), `DATA` (formato de datos
+expuestos), `GW` (Sensitive Data Gateway, Fase 2).
 
 ---
 
@@ -186,3 +193,96 @@ autorización shall venir acompañado de una actualización a este documento
 un test correspondiente en `AuthorizationE2EIT`. Un PR que modifique la
 lógica de autorización sin tocar este archivo debe considerarse incompleto
 en revisión de código.
+
+---
+
+## 9. Requisitos de Fase 2 — Sensitive Data Gateway + AWS KMS
+
+Fuente: RF2 ("Protección de datos sensibles") y la sección de Arquitectura
+de la especificación maestra del proyecto. Fase 1 ya resuelve el
+enmascarado de campos en la *respuesta* (`MaskingUtil`, según las
+`obligations` del PDP); Fase 2 añade una capa dedicada y **cifrado en
+reposo** de los campos sensibles — algo que hoy no existe.
+
+### 9.1 Decisiones de entorno (tomadas 2026-09-17)
+
+- **KMS:** se usa **LocalStack** en desarrollo y CI (sin costo, sin
+  credenciales de AWS reales, API 1:1 compatible con KMS real — migrar a
+  una cuenta de AWS real después es un cambio de endpoint, no de código).
+- **Almacenamiento:** `finance-api-mock` deja de guardar datos en memoria y
+  pasa a **PostgreSQL**, reutilizando el esquema conceptual de Fase 1
+  (`id`, `ownerId`, `accountNumber`, `balance`, `currency`).
+
+### 9.2 Términos nuevos
+
+- **Sensitive Data Gateway (SDG):** único componente con permiso para leer
+  o escribir en crudo los campos marcados como sensibles.
+- **Envelope encryption:** patrón de cifrado donde cada valor se cifra con
+  una *data key* generada localmente; esa data key, a su vez, se cifra con
+  la Customer Master Key (CMK) que vive en KMS y nunca sale de KMS en
+  claro. Solo el valor cifrado y la data key cifrada se guardan en
+  PostgreSQL.
+- **Campo sensible (Fase 2):** `accountNumber` y `balance` — coincide con
+  "número de cuenta" y "monto exacto" que RF2 nombra explícitamente.
+
+### 9.3 Requisitos
+
+**GW-001** — El Sensitive Data Gateway shall ser el único componente con
+acceso a los valores en texto plano de los campos sensibles; ni
+`custodia-pep` ni el resto de `finance-api-mock` deben leer o escribir esos
+campos directamente en la base de datos.
+
+**GW-002** — When `finance-api-mock` persiste una cuenta nueva o actualiza
+uno de sus campos sensibles, el Sensitive Data Gateway shall cifrar ese
+campo por envelope encryption (data key generada y cifrada vía KMS) antes
+de que el valor llegue a PostgreSQL.
+
+**GW-003** — When el Sensitive Data Gateway necesita devolver un campo
+sensible en texto plano (porque las `obligations` del PDP no piden
+enmascararlo para ese sujeto), el Sensitive Data Gateway shall pedirle a
+KMS descifrar la data key correspondiente, usarla para descifrar el campo
+en memoria, y nunca persistir el valor descifrado.
+
+**GW-004** — El Sensitive Data Gateway shall aplicar `obligations.mask_fields`
+sobre el valor ya descifrado, reproduciendo exactamente el comportamiento
+de enmascarado ya verificado en Fase 1 (mismo formato que `DATA-001`).
+
+**GW-005** — `finance-api-mock` shall persistir sus datos en PostgreSQL en
+vez de en memoria, con `accountNumber` y `balance` almacenados siempre en
+su forma cifrada (nunca en texto plano en la base de datos).
+
+**SEC-004** — Ningún componente del sistema shall escribir en logs el valor
+en texto plano de un campo sensible, en ningún punto del ciclo de
+cifrado/descifrado.
+> Corresponde al RNF explícito de la especificación: "Ningún campo PII
+> aparece en texto plano en logs".
+
+**SEC-005** — If KMS no está disponible o una operación de cifrado o
+descifrado falla, then el Sensitive Data Gateway shall rechazar la
+operación (falla la escritura; la lectura devuelve error, nunca el valor
+sin descifrar ni un valor por defecto) — mismo principio fail-closed de
+ADR-0001, aplicado ahora a la capa de datos en vez de a la capa de
+autorización.
+
+### 9.4 Pendiente de definir antes de implementar
+
+Estas son decisiones de diseño más finas que todavía no están resueltas y
+que conviene fijar (con su propio mini-ADR, según RF5) antes de escribir
+código:
+
+- **Forma del componente:** ¿el Sensitive Data Gateway es un módulo Maven
+  nuevo dentro del reactor (`sensitive-data-gateway`), una librería
+  compartida que `finance-api-mock` importa, o un servicio HTTP
+  independiente? La especificación lo dibuja como un componente propio en
+  el diagrama de arquitectura; por defecto se asume **módulo Maven nuevo**
+  embebido en el proceso de `finance-api-mock` (evita otro salto de red y
+  otro punto de falla en el laboratorio), pero es una decisión a
+  confirmar.
+- **Rotación de llaves KMS:** para este laboratorio se asume la rotación
+  automática anual por defecto de KMS, sin lógica adicional propia — no es
+  un requisito de Fase 2, se anota aquí para no perderlo de vista si surge
+  en la entrevista.
+- **Migración de datos existentes:** Fase 1 no tenía base de datos
+  (`finance-api-mock` servía datos en memoria/hardcodeados), así que no
+  hay datos previos que migrar a PostgreSQL — el seed inicial se define de
+  cero en Fase 2.
